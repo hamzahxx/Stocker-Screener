@@ -3,7 +3,7 @@ import requests
 def nse_stock_list_fetcher(index: str) -> list[str]:
 
     index = index.upper()
-    index = index.replace(" ", "%20")
+    index = index.replace("-", "%20")
     
     session = requests.Session()
 
@@ -24,6 +24,7 @@ def nse_stock_list_fetcher(index: str) -> list[str]:
     stock_symbols = []
 
     for stock in stocks:
+        print(stock["symbol"])
         stock_symbols.append(stock["symbol"])
 
     return stock_symbols
