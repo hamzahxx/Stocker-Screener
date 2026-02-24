@@ -7,6 +7,7 @@ def check_uptrend(df: pd.DataFrame) -> dict:
     in_uptrend = bool(current_price > sma200)
     return {"score": 15 if in_uptrend else 0, "details": {"uptrend": in_uptrend}}
 
+
 def check_support_resistance(df: pd.DataFrame) -> dict:
     # Simplified: find local min/max that price bounced from 2+ times
     # Use rolling windows to find swing highs/lows

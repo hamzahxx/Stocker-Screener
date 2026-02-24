@@ -17,3 +17,14 @@ def screen_index(index: str) -> list:
 
     results.sort(key=lambda x: x.get("total_score", 0), reverse=True)
     return results
+
+@router.get("/equity/{stock}")
+def screen_stock(stock: str):
+    results = []
+    try:
+        result = score_stock(stock)
+        results.append(result)
+    except Exception as e:
+            results.append({"ticker": stock, "error": str(e)})
+    
+    return results
