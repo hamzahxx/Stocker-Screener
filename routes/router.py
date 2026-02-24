@@ -6,25 +6,36 @@ router = APIRouter()
 
 @router.get("/swing/{index}")
 def screen_index(index: str) -> list:
-    stock_list = nse_stock_list_fetcher(index)
+    print(f"[/swing] Request received for index: {index}")
+
+    try:
+        stock_list = nse_stock_list_fetcher(index)
+        print(f"[/swing] Stock list fetched — {len(stock_list)} stocks to process")
+    except Exception as e:
+        print(f"[/swing] ERROR fetching stock list for {index}: {e}")
+        return [{"error": f"Failed to fetch stock list: {str(e)}"}]
+
     results = []
-    for stock in stock_list:
+    for i, stock in enumerate(stock_list):
+        print(f"[/swing] Processing stock {i+1}/{len(stock_list)}: {stock}")
         try:
             result = score_stock(stock)
             results.append(result)
         except Exception as e:
+            print(f"[/swing] ERROR scoring stock {stock}: {e}")
             results.append({"ticker": stock, "error": str(e)})
 
     results.sort(key=lambda x: x.get("total_score", 0), reverse=True)
+    print(f"[/swing] Done. Returning {len(results)} results")
     return results
 
 @router.get("/equity/{stock}")
 def screen_stock(stock: str):
-    results = []
+    print(f"[/equity] Request received for stock: {stock}")
     try:
         result = score_stock(stock)
-        results.append(result)
+        print(f"[/equity] Scoring complete for {stock}")
+        return [result]
     except Exception as e:
-            results.append({"ticker": stock, "error": str(e)})
-    
-    return results
+        print(f"[/equity] ERROR scoring {stock}: {e}")
+        return [{"ticker": stock, "error": str(e)}]

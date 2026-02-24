@@ -1,14 +1,17 @@
 import pandas as pd
 
 def check_uptrend(df: pd.DataFrame) -> dict:
+    print(f"[check_uptrend] df rows: {len(df)}")
     # Price above 200 SMA = uptrend
     sma200 = df["Close"].rolling(200).mean().iloc[-1]
     current_price = df["Close"].iloc[-1]
     in_uptrend = bool(current_price > sma200)
+    print(f"[check_uptrend] price={current_price:.2f}, sma200={sma200:.2f}, in_uptrend={in_uptrend}")
     return {"score": 15 if in_uptrend else 0, "details": {"uptrend": in_uptrend}}
 
 
 def check_support_resistance(df: pd.DataFrame) -> dict:
+    print(f"[check_support_resistance] df rows: {len(df)}")
     # Simplified: find local min/max that price bounced from 2+ times
     # Use rolling windows to find swing highs/lows
     highs = df["High"].rolling(5, center=True).max()
@@ -21,17 +24,21 @@ def check_support_resistance(df: pd.DataFrame) -> dict:
     strong_resistance = support_levels[support_levels >= 2]
     
     score = 10 if (len(strong_support) > 0 and len(strong_resistance) > 0) else 0
+    print(f"[check_support_resistance] strong_support={len(strong_support)}, strong_resistance={len(strong_resistance)}, score={score}")
     return {"score": score, "details": {"support_count": int(len(strong_support)), "resistance_count": int(len(strong_resistance))}}
 
 
 def check_near_support(df: pd.DataFrame) -> dict:
+    print(f"[check_near_support] df rows: {len(df)}")
     current = df["Close"].iloc[-1]
     recent_low = df["Low"].tail(20).min()
     near = bool(abs(current - recent_low) / current < 0.03)  # within 3%
+    print(f"[check_near_support] current={current:.2f}, recent_low={recent_low:.2f}, near={near}")
     return {"score": 10 if near else 0, "details": {"near_support": near}}
 
 
 def check_bullish_intent(df: pd.DataFrame) -> dict:
+    print(f"[check_bullish_intent] df rows: {len(df)}")
     last = df.iloc[-1]
     prev = df.iloc[-2]
     body = last["Close"] - last["Open"]
@@ -41,10 +48,12 @@ def check_bullish_intent(df: pd.DataFrame) -> dict:
     engulfing = bool((last["Close"] > prev["Open"]) and (last["Open"] < prev["Close"]) and prev_body > 0)
 
     score = 10 if (big_green or engulfing) else 0
+    print(f"[check_bullish_intent] big_green={big_green}, engulfing={engulfing}, score={score}")
     return {"score": score, "details": {"big_green": big_green, "engulfing": engulfing}}
 
 
 def check_sma_signal(df: pd.DataFrame) -> dict:
+    print(f"[check_sma_signal] df rows: {len(df)}")
     close = df["Close"]
     sma20 = close.rolling(20).mean().iloc[-1]
     sma50 = close.rolling(50).mean().iloc[-1]
@@ -57,10 +66,12 @@ def check_sma_signal(df: pd.DataFrame) -> dict:
     else:
         signal, score = "NEUTRAL", 5
 
+    print(f"[check_sma_signal] price={price:.2f}, sma20={sma20:.2f}, sma50={sma50:.2f}, signal={signal}")
     return {"score": score, "details": {"sma_signal": signal}}
 
 
 def check_ema_signal(df: pd.DataFrame) -> dict:
+    print(f"[check_ema_signal] df rows: {len(df)}")
     close = df["Close"]
     ema9 = close.ewm(span=9).mean().iloc[-1]
     ema21 = close.ewm(span=21).mean().iloc[-1]
@@ -73,10 +84,12 @@ def check_ema_signal(df: pd.DataFrame) -> dict:
     else:
         signal, score = "NEUTRAL", 5
 
+    print(f"[check_ema_signal] ema9={ema9:.2f}, ema21={ema21:.2f}, ema55={ema55:.2f}, signal={signal}")
     return {"score": score, "details": {"ema_signal": signal}}
 
 
 def check_fibonacci(df: pd.DataFrame) -> dict:
+    print(f"[check_fibonacci] df rows: {len(df)}")
     high = df["High"].tail(60).max()
     low = df["Low"].tail(60).min()
     current = df["Close"].iloc[-1]
@@ -90,4 +103,5 @@ def check_fibonacci(df: pd.DataFrame) -> dict:
     else:
         label, score = "NEUTRAL_UPTREND", 10
 
+    print(f"[check_fibonacci] high={high:.2f}, low={low:.2f}, current={current:.2f}, retrace={retrace:.2%}, label={label}")
     return {"score": score, "details": {"fib_retrace_pct": float(round(retrace * 100, 2)), "label": label}}
