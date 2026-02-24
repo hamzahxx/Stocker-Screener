@@ -1,4 +1,15 @@
 import requests
+import yfinance as yf
+
+def get_stock_data(ticker: str, period: str = "1y", interval: str = "1d"):
+    ticker = ticker + ".NS"
+    stock = yf.Ticker(ticker)
+    info = stock.info
+    history = stock.history(period=period, interval=interval)
+    return {
+        "info": info,
+        "history": history  # pandas DataFrame
+    }
 
 def nse_stock_list_fetcher(index: str) -> list[str]:
 
