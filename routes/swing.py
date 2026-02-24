@@ -4,7 +4,7 @@ from screener.scorer import score_stock
 
 router = APIRouter()
 
-@router.get("/screen/{index}")
+@router.get("/swing/{index}")
 def screen_index(index: str) -> list:
     stock_list = nse_stock_list_fetcher(index)
     results = []
