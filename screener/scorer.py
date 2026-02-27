@@ -1,5 +1,30 @@
 from screener.data_fetcher import get_stock_data
-from screener import technical, analysts
+from screener.technical import (
+    check_uptrend,
+    check_support_resistance,
+    check_near_support,
+    check_bullish_intent,
+    check_sma_signal,
+    check_fibonacci,
+    check_rsi,
+    check_macd,
+    volume_confirmation,
+    check_adx,
+)
+
+# Weights must sum to 100
+SWING_CHECKS = [
+    {"fn": check_rsi,                "weight": 20, "key": "rsi"},
+    {"fn": check_macd,               "weight": 20, "key": "macd"},
+    {"fn": check_uptrend,            "weight": 15, "key": "uptrend"},
+    {"fn": check_adx,                "weight": 15, "key": "adx"},
+    {"fn": volume_confirmation,      "weight": 10, "key": "volume"},
+    {"fn": check_sma_signal,         "weight": 10, "key": "sma"},
+    {"fn": check_fibonacci,          "weight":  5, "key": "fibonacci"},
+    {"fn": check_support_resistance, "weight":  3, "key": "support_resistance"},
+    {"fn": check_near_support,       "weight":  2, "key": "near_support"},
+    {"fn": check_bullish_intent,     "weight":  0, "key": "bullish_intent"},  # reserved for future use
+]
 
 def score_stock(ticker: str) -> dict:
     print(f"[score_stock] Starting scoring for: {ticker}")
@@ -17,34 +42,64 @@ def score_stock(ticker: str) -> dict:
     if df.empty:
         print(f"[score_stock] ERROR: history DataFrame is empty for {ticker}, cannot score")
         raise ValueError(f"Empty history for {ticker}")
-
     results = {}
-    total_score = 0
+    total_score = 0.0
+    total_weight = 0.0
 
-    check_fns = [
-        ("uptrend",            lambda: technical.check_uptrend(df)),
-        ("support_resistance", lambda: technical.check_support_resistance(df)),
-        ("near_support",       lambda: technical.check_near_support(df)),
-        ("bullish_intent",     lambda: technical.check_bullish_intent(df)),
-        ("sma_signal",         lambda: technical.check_sma_signal(df)),
-        ("ema_signal",         lambda: technical.check_ema_signal(df)),
-        ("fibonacci",          lambda: technical.check_fibonacci(df)),
-        ("analyst_rating",     lambda: analysts.check_analyst_ratings(info)),
-    ]
+    for check in SWING_CHECKS:
+        if check["weight"] == 0:
+            # Still run it so details appear in output, but don't count it
+            result = check["fn"](df)
+            results[check["key"]] = result
+            continue
 
-    for name, fn in check_fns:
-        try:
-            result = fn()
-            print(f"[score_stock] {name}: score={result['score']}, details={result.get('details')}")
-            results[name] = result
-            total_score += result["score"]
-        except Exception as e:
-            print(f"[score_stock] ERROR in check '{name}' for {ticker}: {e}")
-            results[name] = {"score": 0, "error": str(e)}
+        result = check["fn"](df)
+        raw = result["score"]          # e.g. 0–15 depending on function
+        max_raw = _get_max_score(check["fn"])
 
-    print(f"[score_stock] Final score for {ticker}: {total_score}")
+        # Normalize: what % of max did this check achieve?
+        pct = (raw / max_raw) if max_raw > 0 else 0
+
+        # Weighted contribution
+        weighted = pct * check["weight"]
+        total_score += weighted
+        total_weight += check["weight"]
+
+        results[check["key"]] = {
+            **result,
+            "weighted_score": round(weighted, 2),
+            "pct_of_max": round(pct * 100, 1),
+        }
+
+    final_pct = round((total_score / total_weight) * 100, 1) if total_weight > 0 else 0
+
     return {
-        "name": ticker,
-        "total_score": total_score,
-        "breakdown": results,
+        "ticker": ticker,
+        "final_score": final_pct,       # 0–100, easy to read
+        "grade": _grade(final_pct),
+        "checks": results,
     }
+
+
+def _get_max_score(fn) -> int:
+    """Max possible raw score each function can return."""
+    return {
+        check_rsi:                15,
+        check_macd:               15,
+        check_uptrend:            15,
+        check_adx:                15,
+        volume_confirmation:      15,
+        check_sma_signal:         10,
+        check_fibonacci:          15,
+        check_support_resistance: 10,
+        check_near_support:       10,
+        check_bullish_intent:     10,
+    }.get(fn, 10)
+
+
+def _grade(score: float) -> str:
+    if score >= 80:   return "A"   # Strong swing candidate
+    elif score >= 65: return "B"   # Good setup
+    elif score >= 50: return "C"   # Borderline
+    elif score >= 35: return "D"   # Weak
+    else:             return "F"   # Avoid
