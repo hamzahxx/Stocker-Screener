@@ -26,6 +26,7 @@ def screen_index(index: str) -> list:
             results.append({"ticker": stock, "error": str(e)})
 
     results.sort(key=lambda x: x.get("final_score", 0), reverse=True)
+    results = [r for r in results if r.get("final_score", 0) >= 50]
     print(f"[/swing] Done. Returning {len(results)} results")
     return results
 
