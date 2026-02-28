@@ -20,13 +20,13 @@ def screen_index(index: str) -> list:
         print(f"[/swing] Processing stock {i+1}/{len(stock_list)}: {stock}")
         try:
             result = score_stock(stock)
-            results.append(result)
+            if result.get("final_score", 0) >= 50:
+                results.append(result)
         except Exception as e:
             print(f"[/swing] ERROR scoring stock {stock}: {e}")
             results.append({"ticker": stock, "error": str(e)})
 
     results.sort(key=lambda x: x.get("final_score", 0), reverse=True)
-    results = [r for r in results if r.get("final_score", 0) >= 50]
     print(f"[/swing] Done. Returning {len(results)} results")
     return results
 
