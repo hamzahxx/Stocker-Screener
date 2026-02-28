@@ -2,8 +2,15 @@ import pandas as pd
 import numpy as np
 
 def check_uptrend(df: pd.DataFrame) -> dict:
+    """
+    UPTREND CHECK (max score: 15)
+    Calculation:
+      - Compute 200-period Simple Moving Average of Close price
+      - If current Close > SMA200 → stock is in a long-term uptrend → score 15
+      - Otherwise → score 0
+    Logic: SMA200 is the classic institutional benchmark for trend direction.
+    """
     print(f"[check_uptrend] df rows: {len(df)}")
-    # Price above 200 SMA = uptrend
     sma200 = df["Close"].rolling(200).mean().iloc[-1]
     current_price = df["Close"].iloc[-1]
     in_uptrend = bool(current_price > sma200)
@@ -12,6 +19,23 @@ def check_uptrend(df: pd.DataFrame) -> dict:
 
 
 def check_support_resistance(df: pd.DataFrame) -> dict:
+    """
+    SUPPORT & RESISTANCE CHECK (max score: 10)
+    Calculation:
+      - Identify swing highs/lows using a rolling window of 5 bars on each side
+      - A swing high = bar whose High is the highest in a (2*window+1) range
+      - A swing low  = bar whose Low  is the lowest  in a (2*window+1) range
+      - Cluster nearby levels (within 1.5% of each other) into single strong levels
+        — a cluster needs ≥2 touches to count as a real level
+      - Find nearest support (below price) and nearest resistance (above price)
+      Scoring based on proximity to support:
+        ≤3%  from support + resistance exists → 10 (ideal entry zone)
+        ≤7%  from support + resistance exists →  7 (reasonable zone)
+        >7%  from support + resistance exists →  4 (mid-range, less ideal)
+        Only support found                    →  3
+        Only resistance found                 →  2
+        No levels found                       →  0
+    """
     print(f"[check_support_resistance] df rows: {len(df)}")
 
     window = 5
@@ -29,8 +53,8 @@ def check_support_resistance(df: pd.DataFrame) -> dict:
 
     current_price = float(df["Close"].iloc[-1])
 
-
     def strong_levels(raw_levels: list, tolerance_pct: float = 0.015) -> list:
+        # Group nearby levels into clusters; only keep clusters with 2+ touches
         if not raw_levels:
             return []
         raw_levels = sorted(raw_levels)
@@ -40,7 +64,7 @@ def check_support_resistance(df: pd.DataFrame) -> dict:
             if (level - group[0]) / group[0] <= tolerance_pct:
                 group.append(level)
             else:
-                if len(group) >= 2:  # 2+ touches = real level
+                if len(group) >= 2:
                     clusters.append(round(float(np.mean(group)), 2))
                 group = [level]
         if len(group) >= 2:
@@ -61,17 +85,17 @@ def check_support_resistance(df: pd.DataFrame) -> dict:
     if has_both:
         pct_from_support = (current_price - nearest_support) / current_price
         if pct_from_support <= 0.03:
-            score = 10   # Near support with clear resistance above
+            score = 10
         elif pct_from_support <= 0.07:
-            score = 7    # Reasonable distance from support
+            score = 7
         else:
-            score = 4    # Levels exist but price is mid-range
+            score = 4
     elif nearest_support is not None:
-        score = 3        # Only support found
+        score = 3
     elif nearest_resistance is not None:
-        score = 2        # Only resistance found
+        score = 2
     else:
-        score = 0        # No clear levels
+        score = 0
 
     print(f"[check_support_resistance] support={nearest_support}, resistance={nearest_resistance}, "
           f"price={current_price:.2f}, score={score}")
@@ -89,20 +113,37 @@ def check_support_resistance(df: pd.DataFrame) -> dict:
 
 
 def check_near_support(df: pd.DataFrame) -> dict:
+    """
+    NEAR SUPPORT CHECK (max score: 10)
+    Calculation:
+      - Find the lowest Low over the last 20 candles (recent_low)
+      - If |current_price - recent_low| / current_price < 3% → price is near support → score 10
+      - Otherwise → score 0
+    Logic: A price hugging recent lows suggests a potential bounce zone.
+    """
     print(f"[check_near_support] df rows: {len(df)}")
     current = df["Close"].iloc[-1]
     recent_low = df["Low"].tail(20).min()
-    near = bool(abs(current - recent_low) / current < 0.03)  # within 3%
+    near = bool(abs(current - recent_low) / current < 0.03)
     print(f"[check_near_support] current={current:.2f}, recent_low={recent_low:.2f}, near={near}")
     return {"score": 10 if near else 0, "details": {"near_support": near}}
 
 
 def check_bullish_intent(df: pd.DataFrame) -> dict:
+    """
+    BULLISH INTENT CHECK (max score: 10)
+    Calculation:
+      - Big Green Candle: body (Close - Open) is positive AND covers ≥60% of the candle's total range (High - Low)
+      - Bullish Engulfing: current candle's Close > prev Open AND current Open < prev Close,
+        with the previous candle being bearish (prev Open > prev Close)
+      - If either condition is true → score 10, else → score 0
+    Logic: These candlestick patterns signal strong buying pressure and potential reversal/continuation.
+    """
     print(f"[check_bullish_intent] df rows: {len(df)}")
     last = df.iloc[-1]
     prev = df.iloc[-2]
     body = last["Close"] - last["Open"]
-    prev_body = prev["Open"] - prev["Close"]  # previous bearish candle
+    prev_body = prev["Open"] - prev["Close"]
 
     big_green = bool(body > 0 and body > (last["High"] - last["Low"]) * 0.6)
     engulfing = bool((last["Close"] > prev["Open"]) and (last["Open"] < prev["Close"]) and prev_body > 0)
@@ -113,6 +154,15 @@ def check_bullish_intent(df: pd.DataFrame) -> dict:
 
 
 def check_sma_signal(df: pd.DataFrame) -> dict:
+    """
+    SMA SIGNAL CHECK (max score: 10)
+    Calculation:
+      - Compute SMA20 and SMA50 of Close price
+      - BUY    : price > SMA20 > SMA50  → price above both averages in bullish order → score 10
+      - SELL   : price < SMA20 < SMA50  → price below both averages in bearish order → score 0
+      - NEUTRAL: any other arrangement                                                → score 5
+    Logic: SMA alignment confirms short-to-medium term trend direction.
+    """
     print(f"[check_sma_signal] df rows: {len(df)}")
     close = df["Close"]
     sma20 = close.rolling(20).mean().iloc[-1]
@@ -131,6 +181,15 @@ def check_sma_signal(df: pd.DataFrame) -> dict:
 
 
 def check_ema_signal(df: pd.DataFrame) -> dict:
+    """
+    EMA SIGNAL CHECK (max score: 10)
+    Calculation:
+      - Compute EMA9, EMA21, EMA55 using exponential weighting (more weight on recent prices)
+      - BUY    : EMA9 > EMA21 > EMA55  → short-term momentum above long-term → score 10
+      - SELL   : EMA9 < EMA21 < EMA55  → short-term momentum below long-term → score 0
+      - NEUTRAL: any other arrangement                                        → score 5
+    Logic: EMA alignment is more responsive than SMA — catches trend changes earlier.
+    """
     print(f"[check_ema_signal] df rows: {len(df)}")
     close = df["Close"]
     ema9 = close.ewm(span=9).mean().iloc[-1]
@@ -149,9 +208,22 @@ def check_ema_signal(df: pd.DataFrame) -> dict:
 
 
 def check_fibonacci(df: pd.DataFrame) -> dict:
+    """
+    FIBONACCI RETRACEMENT CHECK (max score: 15)
+    Calculation:
+      - Find the highest High and lowest Low over the last 126 candles (~6 months)
+      - Compute retracement = (high - current) / (high - low)
+        → 0%   = price at the 6M high  (no retracement)
+        → 100% = price at the 6M low   (full retracement)
+      Scoring:
+        38.2% – 61.8% retrace → HEALTHY_UPTREND  → score 15 (classic Fibonacci golden zone)
+        < 38.2% retrace       → FAST_UPTREND     → score  5 (strong but may be extended)
+        > 61.8% retrace       → NEUTRAL_UPTREND  → score 10 (deeper pullback, more risk)
+    Logic: The golden zone (0.382–0.618) is where institutional buyers typically re-enter.
+    """
     print(f"[check_fibonacci] df rows: {len(df)}")
-    high = df["High"].tail(60).max()
-    low = df["Low"].tail(60).min()
+    high = df["High"].tail(126).max()
+    low = df["Low"].tail(126).min()
     current = df["Close"].iloc[-1]
 
     retrace = (high - current) / (high - low)
@@ -168,6 +240,22 @@ def check_fibonacci(df: pd.DataFrame) -> dict:
 
 
 def check_rsi(df: pd.DataFrame) -> dict:
+    """
+    RSI CHECK (max score: 15)
+    Calculation:
+      - Compute 14-period RSI:
+          1. Find daily price changes (diff)
+          2. Separate gains (positive diffs) and losses (negative diffs)
+          3. Smooth both with 14-period rolling average
+          4. RS = avg_gain / avg_loss
+          5. RSI = 100 - (100 / (1 + RS))
+      Scoring:
+        40 – 60  → HEALTHY    → score 15 (ideal swing entry momentum)
+        < 30     → OVERSOLD   → score 10 (potential reversal, higher risk)
+        30 – 40  → RECOVERING → score  8 (coming out of oversold)
+        60 – 70  → EXTENDED   → score  5 (momentum slowing, caution)
+        > 70     → OVERBOUGHT → score  0 (avoid new entries)
+    """
     print(f"[check_rsi] df rows: {len(df)}")
     close = df["Close"]
     delta = close.diff()
@@ -176,10 +264,6 @@ def check_rsi(df: pd.DataFrame) -> dict:
     rs = gain / loss
     rsi = float((100 - (100 / (1 + rs))).iloc[-1])
 
-    # Swing trading RSI logic:
-    # 40-60 = healthy momentum (best swing entry zone)
-    # <30   = oversold, potential reversal (good but risky)
-    # >70   = overbought, avoid entry
     if 40 <= rsi <= 60:
         score, label = 15, "HEALTHY"
     elif rsi < 30:
@@ -196,6 +280,19 @@ def check_rsi(df: pd.DataFrame) -> dict:
 
 
 def check_macd(df: pd.DataFrame) -> dict:
+    """
+    MACD CHECK (max score: 15)
+    Calculation:
+      - MACD Line    = EMA12 - EMA26  (fast minus slow exponential average)
+      - Signal Line  = EMA9 of MACD Line
+      - Histogram    = MACD Line - Signal Line  (positive = bullish momentum)
+      - Fresh crossover = histogram just flipped from ≤0 to >0 (previous bar ≤0, current bar >0)
+      Scoring:
+        Fresh crossover                       → FRESH_CROSSOVER   → score 15 (best entry timing)
+        MACD > Signal + histogram growing     → BULLISH_MOMENTUM  → score 10 (strong continuation)
+        MACD > Signal + histogram shrinking   → BULLISH_WEAKENING → score  5 (momentum fading)
+        MACD < Signal                         → BEARISH           → score  0 (avoid)
+    """
     print(f"[check_macd] df rows: {len(df)}")
     close = df["Close"]
     ema12 = close.ewm(span=12).mean()
@@ -209,11 +306,7 @@ def check_macd(df: pd.DataFrame) -> dict:
     hist_val = float(histogram.iloc[-1])
     prev_hist = float(histogram.iloc[-2])
 
-    # Swing trading MACD logic:
-    # Fresh bullish crossover = best entry signal
-    # MACD above signal + histogram growing = strong momentum
-    # MACD below signal = avoid
-    fresh_crossover = bool(hist_val > 0 and prev_hist <= 0)  # just crossed up
+    fresh_crossover = bool(hist_val > 0 and prev_hist <= 0)
     bullish = bool(macd_val > signal_val)
     histogram_growing = bool(hist_val > prev_hist)
 
@@ -231,6 +324,20 @@ def check_macd(df: pd.DataFrame) -> dict:
 
 
 def volume_confirmation(df: pd.DataFrame) -> dict:
+    """
+    VOLUME CONFIRMATION CHECK (max score: 15)
+    Calculation:
+      - avg_volume   = mean of last 20 bars' volume (baseline)
+      - volume_ratio = last bar volume / avg_volume
+        → ratio > 1.0 means above-average volume
+      - price_up = last Close > previous Close
+      Scoring:
+        Price up + volume ≥ 1.5x avg  → HIGH_VOLUME_BREAKOUT → score 15 (strong conviction)
+        Price up + volume ≥ 1.0x avg  → NORMAL_VOLUME_UP    → score 10 (healthy move)
+        Price up + volume < 1.0x avg  → LOW_VOLUME_UP        → score  5 (weak, may fade)
+        Price down (any volume)        → SELLING_PRESSURE     → score  0 (avoid)
+    Logic: Volume validates price moves — a breakout without volume is suspect.
+    """
     print(f"[check_volume] df rows: {len(df)}")
     volume = df["Volume"]
     avg_volume = float(volume.tail(20).mean())
@@ -241,10 +348,6 @@ def volume_confirmation(df: pd.DataFrame) -> dict:
     volume_ratio = last_volume / avg_volume if avg_volume > 0 else 1.0
     price_up = last_close > prev_close
 
-    # Swing trading volume logic:
-    # Price up + high volume = strong conviction (best)
-    # Price up + low volume = weak move, caution
-    # Price down + high volume = distribution, bad
     if price_up and volume_ratio >= 1.5:
         score, label = 15, "HIGH_VOLUME_BREAKOUT"
     elif price_up and volume_ratio >= 1.0:
@@ -259,19 +362,35 @@ def volume_confirmation(df: pd.DataFrame) -> dict:
 
 
 def check_adx(df: pd.DataFrame) -> dict:
+    """
+    ADX (Average Directional Index) CHECK (max score: 15)
+    Calculation:
+      - True Range (TR) = max of:
+            (High - Low),  |High - prev Close|,  |Low - prev Close|
+      - +DM = upward move (High diff) when it exceeds downward move and is positive
+      - -DM = downward move (Low diff) when it exceeds upward move and is positive
+      - ATR     = EMA14 of True Range
+      - +DI     = 100 × EMA14(+DM) / ATR  (bullish directional strength)
+      - -DI     = 100 × EMA14(-DM) / ATR  (bearish directional strength)
+      - DX      = 100 × |+DI - -DI| / (+DI + -DI)
+      - ADX     = EMA14 of DX  (trend strength — direction-neutral)
+      Scoring:
+        ADX ≥ 25 + +DI > -DI  → STRONG_UPTREND   → score 15 (strongest setup)
+        ADX ≥ 25 + +DI < -DI  → STRONG_DOWNTREND → score  0 (avoid)
+        20 ≤ ADX < 25 + +DI > -DI → DEVELOPING_TREND → score 8 (emerging trend)
+        ADX < 20               → RANGING          → score  3 (swing setups unreliable)
+    """
     print(f"[check_adx] df rows: {len(df)}")
     high = df["High"]
     low = df["Low"]
     close = df["Close"]
     period = 14
 
-    # True Range
     tr1 = high - low
     tr2 = (high - close.shift()).abs()
     tr3 = (low - close.shift()).abs()
     tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
 
-    # Directional Movement
     up_move = high.diff()
     down_move = -low.diff()
     plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
@@ -285,9 +404,6 @@ def check_adx(df: pd.DataFrame) -> dict:
     plus_di_val = float(plus_di.iloc[-1])
     minus_di_val = float(minus_di.iloc[-1])
 
-    # Swing trading ADX logic:
-    # ADX > 25 + +DI > -DI = strong uptrend, swing setups are reliable
-    # ADX < 20 = ranging market, swing setups often fail
     trending_up = bool(plus_di_val > minus_di_val)
 
     if adx >= 25 and trending_up:
@@ -302,3 +418,64 @@ def check_adx(df: pd.DataFrame) -> dict:
     print(f"[check_adx] adx={adx:.2f}, +DI={plus_di_val:.2f}, -DI={minus_di_val:.2f}, label={label}")
     return {"score": score, "details": {"adx": round(adx, 2), "plus_di": round(plus_di_val, 2), "minus_di": round(minus_di_val, 2), "adx_label": label}}
 
+
+def check_52w_high(df: pd.DataFrame) -> dict:
+    """
+    52-WEEK HIGH CHECK (max score: 15)
+    Calculation:
+      - Look at the last 252 trading days (~1 year)
+      - high_52w = highest Close in that period
+      - low_52w  = lowest  Close in that period
+      - pct_from_high = (high_52w - current) / high_52w
+        → 0%  = price is AT the 52W high
+        → 20% = price is 20% below the 52W high
+      - fresh_breakout = last 5 days' high > 52W high × 1.001
+        (0.1% buffer to avoid floating point false positives)
+      Scoring:
+        Fresh breakout       → BREAKOUT        → score 15 (all resistance cleared)
+        ≤3%  from high       → RESISTANCE_WALL → score  3 (heavy sellers at prior high)
+        ≤10% from high       → APPROACHING_HIGH→ score 10 (building toward breakout)
+        ≤20% from high       → MOMENTUM_ZONE  → score 12 (best risk/reward zone)
+        ≤35% from high       → MID_RANGE      → score  6 (neutral)
+        >35% from high       → FAR_FROM_HIGH  → score  0 (weak/downtrend)
+    """
+    print(f"[check_52w_high] df rows: {len(df)}")
+
+    year_data = df["Close"].tail(252)
+    high_52w = float(year_data.max())
+    low_52w = float(year_data.min())
+    current = float(df["Close"].iloc[-1])
+    recent_high = float(df["Close"].tail(5).max())
+
+    pct_from_high = (high_52w - current) / high_52w
+
+    fresh_breakout = recent_high > high_52w * 1.001
+
+    if fresh_breakout:
+        score, label = 15, "BREAKOUT"
+    elif pct_from_high <= 0.03:
+        score, label = 3,  "RESISTANCE_WALL"
+    elif pct_from_high <= 0.10:
+        score, label = 10, "APPROACHING_HIGH"
+    elif pct_from_high <= 0.20:
+        score, label = 12, "MOMENTUM_ZONE"
+    elif pct_from_high <= 0.35:
+        score, label = 6,  "MID_RANGE"
+    else:
+        score, label = 0,  "FAR_FROM_HIGH"
+
+    print(f"[check_52w_high] current={current:.2f}, 52w_high={high_52w:.2f}, "
+          f"52w_low={low_52w:.2f}, pct_from_high={pct_from_high:.2%}, "
+          f"fresh_breakout={fresh_breakout}, label={label}")
+
+    return {
+        "score": score,
+        "details": {
+            "52w_high": round(high_52w, 2),
+            "52w_low": round(low_52w, 2),
+            "current_price": round(current, 2),
+            "pct_from_52w_high": round(pct_from_high * 100, 2),
+            "fresh_breakout": fresh_breakout,
+            "label": label,
+        }
+    }

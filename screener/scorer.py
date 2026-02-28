@@ -10,6 +10,7 @@ from screener.technical import (
     check_macd,
     volume_confirmation,
     check_adx,
+    check_52w_high,
 )
 
 # Weights must sum to 100
@@ -18,6 +19,7 @@ SWING_CHECKS = [
     {"fn": check_macd,               "weight": 20, "key": "macd"},
     {"fn": check_uptrend,            "weight": 15, "key": "uptrend"},
     {"fn": check_adx,                "weight": 15, "key": "adx"},
+    {"fn": check_52w_high,           "weight": 10, "key": "52w_high"},
     {"fn": volume_confirmation,      "weight": 10, "key": "volume"},
     {"fn": check_sma_signal,         "weight": 10, "key": "sma"},
     {"fn": check_fibonacci,          "weight":  5, "key": "fibonacci"},
@@ -89,6 +91,7 @@ def _get_max_score(fn) -> int:
         check_uptrend:            15,
         check_adx:                15,
         volume_confirmation:      15,
+        check_52w_high:           15,
         check_sma_signal:         10,
         check_fibonacci:          15,
         check_support_resistance: 10,

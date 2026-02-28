@@ -1,7 +1,7 @@
 import requests
 import yfinance as yf
 
-def get_stock_data(ticker: str, period: str = "1y", interval: str = "1d"):
+def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d"):
     ns_ticker = ticker + ".NS"
     print(f"[get_stock_data] Fetching data for: {ns_ticker}")
 
