@@ -1,3 +1,6 @@
-__pycache__
-
+# environment variables
 .venv
+.env
+
+# cache avoiding
+__pycache__
