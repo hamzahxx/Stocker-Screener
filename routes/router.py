@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from screener.data_fetcher import nse_stock_list_fetcher
 from screener.scorer import score_stock
 from auth import verify_api_key
@@ -14,7 +14,7 @@ def screen_index(index: str, api_key: str = Depends(verify_api_key)) -> list:
         print(f"[/swing] Stock list fetched — {len(stock_list)} stocks to process")
     except Exception as e:
         print(f"[/swing] ERROR fetching stock list for {index}: {e}")
-        return [{"error": f"Failed to fetch stock list: {str(e)}"}]
+        raise HTTPException(status_code=400, detail="NSE data not found")
 
     results = []
     for i, stock in enumerate(stock_list):
