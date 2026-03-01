@@ -1,11 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from screener.data_fetcher import nse_stock_list_fetcher
 from screener.scorer import score_stock
+from auth import verify_api_key
 
 router = APIRouter()
 
 @router.get("/swing/{index}")
-def screen_index(index: str) -> list:
+def screen_index(index: str, api_key: str = Depends(verify_api_key)) -> list:
     print(f"[/swing] Request received for index: {index}")
 
     try:
@@ -31,7 +32,7 @@ def screen_index(index: str) -> list:
     return results
 
 @router.get("/equity/{stock}")
-def screen_stock(stock: str):
+def screen_stock(stock: str, api_key: str = Depends(verify_api_key)):
     print(f"[/equity] Request received for stock: {stock}")
     try:
         result = score_stock(stock)
