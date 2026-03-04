@@ -1,11 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
+from routes.schemas import StockResult
 from screener.data_fetcher import nse_stock_list_fetcher
 from screener.scorer import score_stock
 from auth import verify_api_key
 
 router = APIRouter()
 
-@router.get("/swing/{index}")
+@router.get(
+    "/swing/{index}",
+    summary="Screen an NSE Index",
+    description="Returns all stocks in the given index ranked by swing trade score (0-100).",
+    response_description="List of stocks sorted by final score descending",
+    response_model=list[StockResult],
+    tags=["Screener"],
+)
 def screen_index(index: str, api_key: str = Depends(verify_api_key)) -> list:
     print(f"[/swing] Request received for index: {index}")
 
@@ -31,13 +39,20 @@ def screen_index(index: str, api_key: str = Depends(verify_api_key)) -> list:
     print(f"[/swing] Done. Returning {len(results)} results")
     return results
 
-@router.get("/equity/{stock}")
+@router.get(
+    "/equity/{stock}",
+    summary="Screen a Single Stock",
+    description="Returns a detailed technical breakdown and score for a single NSE stock.",
+    response_description="Score and indicator details for the requested stock",
+    response_model=StockResult,
+    tags=["Screener"],
+)
 def screen_stock(stock: str, api_key: str = Depends(verify_api_key)):
     print(f"[/equity] Request received for stock: {stock}")
     try:
         result = score_stock(stock)
         print(f"[/equity] Scoring complete for {stock}")
-        return [result]
+        return result
     except Exception as e:
         print(f"[/equity] ERROR scoring {stock}: {e}")
-        return [{"ticker": stock, "error": str(e)}]
+        raise HTTPException(status_code=500, detail=str(e))
