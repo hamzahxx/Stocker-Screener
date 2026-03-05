@@ -2,15 +2,16 @@ import requests
 import yfinance as yf
 from screener.cache import cache_get, cache_set
 
-def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d"):
+def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d", force_refresh: bool = False):
     ticker = ticker.upper()
     ns_ticker = ticker + ".NS"
     cache_key = f"stock:{ns_ticker}"
 
-    cached = cache_get(cache_key)
-    if cached is not None:
-        print(f"[get_stock_data] CACHED -> {ns_ticker}")
-        return cached
+    if not force_refresh:
+        cached = cache_get(cache_key)
+        if cached is not None:
+            print(f"[get_stock_data] CACHED -> {ns_ticker}")
+            return cached
 
     print(f"[get_stock_data] Fetching data for: {ns_ticker}")
     try:

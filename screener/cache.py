@@ -29,7 +29,7 @@ def get_redis() -> redis.Redis:
 
 def _seconds_until_next_refresh() -> int:
     now = datetime.now(IST)
-    next_refresh = now.replace(hour=9, minute=20, second=0, microsecond=0)
+    next_refresh = now.replace(hour=9, minute=15, second=0, microsecond=0)
 
     if now >= next_refresh:
         next_refresh += timedelta(days=1)

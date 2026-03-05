@@ -28,7 +28,7 @@ def prewarm():
         for i, ticker in enumerate(stocks, 1):
             print(f"[prewarm] [{i}/{len(stocks)}] {ticker}")
             try:
-                get_stock_data(ticker)
+                get_stock_data(ticker, force_refresh=True)  # ← always overwrite
                 total_stocks += 1
             except Exception as e:
                 print(f"[prewarm] ERROR for {ticker}: {e}")
