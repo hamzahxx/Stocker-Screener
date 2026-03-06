@@ -81,7 +81,7 @@ export function NavBar({
                                         : undefined
                                 }
                             >
-                                &#x21BB;;
+                                &#x21BB;
                             </span>
                         </button>
                     )}
