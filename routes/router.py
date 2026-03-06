@@ -3,6 +3,7 @@ from routes.schemas import StockResult
 from screener.data_fetcher import nse_stock_list_fetcher
 from screener.scorer import score_stock
 from auth import verify_api_key
+import concurrent.futures
 
 router = APIRouter()
 
@@ -25,15 +26,15 @@ def screen_index(index: str, api_key: str = Depends(verify_api_key)) -> list:
         raise HTTPException(status_code=400, detail="NSE data not found")
 
     results = []
-    for i, stock in enumerate(stock_list):
-        print(f"[/swing] Processing stock {i+1}/{len(stock_list)}: {stock}")
-        try:
-            result = score_stock(stock)
-            if result.get("final_score", 0) >= 50:
-                results.append(result)
-        except Exception as e:
-            print(f"[/swing] ERROR scoring stock {stock}: {e}")
-            results.append({"ticker": stock, "error": str(e)})
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(score_stock, stock) for stock in stock_list]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                result = future.result()
+                if result.get("final_score", 0) >= 50:
+                    results.append(result)
+            except Exception as e:
+                print(f"[/swing] ERROR scoring stocks: {e}")
 
     results.sort(key=lambda x: x.get("final_score", 0), reverse=True)
     print(f"[/swing] Done. Returning {len(results)} results")
