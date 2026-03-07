@@ -1,3 +1,4 @@
+from screener.cache import cache_get, cache_set
 from screener.data_fetcher import get_stock_data
 from screener.technical import (
     check_uptrend,
@@ -28,7 +29,14 @@ SWING_CHECKS = [
     {"fn": check_bullish_intent,     "weight":  0, "key": "bullish_intent"},  # reserved for future use
 ]
 
-def score_stock(ticker: str) -> dict:
+def score_stock(ticker: str, force_refresh: bool = False) -> dict:
+    cache_key = f"score:{ticker.upper()}.NS"
+
+    if not force_refresh:
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
     print(f"[score_stock] Starting scoring for: {ticker}")
 
     try:
@@ -75,12 +83,14 @@ def score_stock(ticker: str) -> dict:
 
     final_pct = round((total_score / total_weight) * 100, 1) if total_weight > 0 else 0
 
-    return {
+    result = {
         "ticker": ticker,
         "final_score": final_pct,       # 0–100, easy to read
         "grade": _grade(final_pct),
         "checks": results,
     }
+    cache_set(cache_key, result)
+    return result
 
 
 def _get_max_score(fn) -> int:

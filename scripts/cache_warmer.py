@@ -5,7 +5,8 @@ Locally:  python -m scripts.prewarm_cache
 Render:   runs automatically on startup via main.py
 """
 from screener.cache import PRIORITY_INDEXES
-from screener.data_fetcher import nse_stock_list_fetcher, get_stock_data
+from screener.data_fetcher import nse_stock_list_fetcher
+from screener.scorer import score_stock
 
 def prewarm():
     print("=" * 50)
@@ -28,7 +29,7 @@ def prewarm():
         for i, ticker in enumerate(stocks, 1):
             print(f"[prewarm] [{i}/{len(stocks)}] {ticker}")
             try:
-                get_stock_data(ticker, force_refresh=True)  # ← always overwrite
+                score_stock(ticker, force_refresh=True)  # ← always overwrite
                 total_stocks += 1
             except Exception as e:
                 print(f"[prewarm] ERROR for {ticker}: {e}")

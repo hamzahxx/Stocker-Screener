@@ -2,16 +2,9 @@ import requests
 import yfinance as yf
 from screener.cache import cache_get, cache_set
 
-def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d", force_refresh: bool = False):
+def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d"):
     ticker = ticker.upper()
     ns_ticker = ticker + ".NS"
-    cache_key = f"stock:{ns_ticker}"
-
-    if not force_refresh:
-        cached = cache_get(cache_key)
-        if cached is not None:
-            print(f"[get_stock_data] CACHED -> {ns_ticker}")
-            return cached
 
     print(f"[get_stock_data] Fetching data for: {ns_ticker}")
     try:
@@ -37,13 +30,10 @@ def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d", force_
         print(f"[get_stock_data] ERROR fetching stock.history for {ns_ticker}: {e}")
         raise
     
-    result = {
+    return {
         "info": info,
         "history": history
     }
-
-    cache_set(cache_key, result)
-    return result
 
 def nse_stock_list_fetcher(index: str) -> list[str]:
     print(f"[nse_stock_list_fetcher] Fetching stock list for index: {index}")
