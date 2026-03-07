@@ -1,7 +1,7 @@
 """
 Pre-warms Redis cache for priority indexes.
 
-Locally:  python -m scripts.prewarm_cache
+Locally:  python -m scripts.cache_warmer
 Render:   runs automatically on startup via main.py
 """
 from screener.cache import PRIORITY_INDEXES

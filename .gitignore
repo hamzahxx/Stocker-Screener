@@ -4,3 +4,10 @@
 
 # cache avoiding
 __pycache__
+
+#prd related
+create-prd.md
+generate-tasks.md
+
+
+.DS_Store
