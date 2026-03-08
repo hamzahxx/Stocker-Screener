@@ -31,8 +31,7 @@ def screen_index(index: str, api_key: str = Depends(verify_api_key)) -> list:
         for future in concurrent.futures.as_completed(futures):
             try:
                 result = future.result()
-                if result.get("final_score", 0) >= 50:
-                    results.append(result)
+                results.append(result)
             except Exception as e:
                 print(f"[/swing] ERROR scoring stocks: {e}")
 
