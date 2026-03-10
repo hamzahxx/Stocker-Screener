@@ -34,6 +34,11 @@ def _seconds_until_next_refresh() -> int:
     if now >= next_refresh:
         next_refresh += timedelta(days=1)
 
+    if next_refresh.weekday() == 5:
+        next_refresh += timedelta(days=2)
+    elif next_refresh.weekday() == 6:
+        next_refresh += timedelta(days=1)
+
     seconds = int((next_refresh - now).total_seconds())
     print(f"[cache] TTL -> {seconds}s (expires {next_refresh.strftime('%Y-%m-%d %H:%M')} IST)")
     return seconds
