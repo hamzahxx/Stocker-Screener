@@ -153,30 +153,37 @@ def check_bullish_intent(df: pd.DataFrame) -> dict:
     return {"score": score, "details": {"big_green": big_green, "engulfing": engulfing}}
 
 
-def check_sma_signal(df: pd.DataFrame) -> dict:
+def check_sma_cross(df: pd.DataFrame) -> dict:
     """
-    SMA SIGNAL CHECK (max score: 10)
-    Calculation:
-      - Compute SMA20 and SMA50 of Close price
-      - BUY    : price > SMA20 > SMA50  → price above both averages in bullish order → score 10
-      - SELL   : price < SMA20 < SMA50  → price below both averages in bearish order → score 0
-      - NEUTRAL: any other arrangement                                                → score 5
-    Logic: SMA alignment confirms short-to-medium term trend direction.
+    SMA CROSS CHECK (max score: 10)
+    Detects golden cross (SMA20 crosses above SMA50) within last 10 bars.
+    A fresh cross is the setup signal; already-aligned is a weaker continuation.
     """
-    print(f"[check_sma_signal] df rows: {len(df)}")
     close = df["Close"]
-    sma20 = close.rolling(20).mean().iloc[-1]
-    sma50 = close.rolling(50).mean().iloc[-1]
-    price = close.iloc[-1]
+    sma20 = close.rolling(20).mean()
+    sma50 = close.rolling(50).mean()
 
-    if price > sma20 > sma50:
-        signal, score = "BUY", 10
-    elif price < sma20 < sma50:
+    # Check if SMA20 crossed above SMA50 within the last 10 bars
+    recent_golden_cross = False
+    lookback = min(10, len(sma20) - 1)
+    for i in range(len(sma20) - lookback, len(sma20)):
+        if sma20.iloc[i - 1] <= sma50.iloc[i - 1] and sma20.iloc[i] > sma50.iloc[i]:
+            recent_golden_cross = True
+            break
+
+    price    = close.iloc[-1]
+    sma20_v  = sma20.iloc[-1]
+    sma50_v  = sma50.iloc[-1]
+
+    if recent_golden_cross:
+        signal, score = "GOLDEN_CROSS", 10    # best: fresh initiation
+    elif price > sma20_v > sma50_v:
+        signal, score = "BUY", 5              # trend running, less actionable
+    elif price < sma20_v < sma50_v:
         signal, score = "SELL", 0
     else:
-        signal, score = "NEUTRAL", 5
+        signal, score = "NEUTRAL", 3
 
-    print(f"[check_sma_signal] price={price:.2f}, sma20={sma20:.2f}, sma50={sma50:.2f}, signal={signal}")
     return {"score": score, "details": {"sma_signal": signal}}
 
 
@@ -242,19 +249,8 @@ def check_fibonacci(df: pd.DataFrame) -> dict:
 def check_rsi(df: pd.DataFrame) -> dict:
     """
     RSI CHECK (max score: 15)
-    Calculation:
-      - Compute 14-period RSI:
-          1. Find daily price changes (diff)
-          2. Separate gains (positive diffs) and losses (negative diffs)
-          3. Smooth both with 14-period rolling average
-          4. RS = avg_gain / avg_loss
-          5. RSI = 100 - (100 / (1 + RS))
-      Scoring:
-        40 – 60  → HEALTHY    → score 15 (ideal swing entry momentum)
-        < 30     → OVERSOLD   → score 10 (potential reversal, higher risk)
-        30 – 40  → RECOVERING → score  8 (coming out of oversold)
-        60 – 70  → EXTENDED   → score  5 (momentum slowing, caution)
-        > 70     → OVERBOUGHT → score  0 (avoid new entries)
+    Rewards RSI recovering FROM oversold, not sitting in a comfortable zone.
+    RSI momentum (rising vs 5 bars ago) separates real recovery from dead-cat bounces.
     """
     print(f"[check_rsi] df rows: {len(df)}")
     close = df["Close"]
@@ -262,36 +258,44 @@ def check_rsi(df: pd.DataFrame) -> dict:
     gain = delta.clip(lower=0).rolling(14).mean()
     loss = -delta.clip(upper=0).rolling(14).mean()
     rs = gain / loss
-    rsi = float((100 - (100 / (1 + rs))).iloc[-1])
+    rsi_series = 100 - (100 / (1 + rs))
+    rsi = float(rsi_series.iloc[-1])
 
-    if 40 <= rsi <= 60:
-        score, label = 15, "HEALTHY"
-    elif rsi < 30:
-        score, label = 10, "OVERSOLD"
-    elif 30 <= rsi < 40:
-        score, label = 8, "RECOVERING"
+    # RSI momentum: is RSI rising vs 5 bars ago?
+    rsi_5ago = float(rsi_series.iloc[-6]) if len(rsi_series) >= 6 else rsi
+    rsi_rising = rsi > rsi_5ago + 2  # at least 2 points = meaningful shift
+
+    if 25 <= rsi <= 45 and rsi_rising:
+        score, label = 15, "EARLY_RECOVERY"      # best: oversold AND recovering
+    elif 25 <= rsi <= 45:
+        score, label = 10, "OVERSOLD_BASE"        # base forming, no momentum yet
+    elif rsi < 25:
+        score, label = 8, "DEEPLY_OVERSOLD"       # potential but risky
+    elif 45 < rsi <= 60:
+        score, label = 5, "NEUTRAL"               # mid-range, less edge
     elif 60 < rsi <= 70:
-        score, label = 5, "EXTENDED"
+        score, label = 2, "EXTENDED"              # momentum fading
     else:
-        score, label = 0, "OVERBOUGHT"
+        score, label = 0, "OVERBOUGHT"            # avoid
 
-    print(f"[check_rsi] rsi={rsi:.2f}, label={label}, score={score}")
-    return {"score": score, "details": {"rsi": round(rsi, 2), "rsi_label": label}}
+    print(f"[check_rsi] rsi={rsi:.2f}, rsi_5ago={rsi_5ago:.2f}, rising={rsi_rising}, label={label}")
+    return {
+        "score": score,
+        "details": {
+            "rsi": round(rsi, 2),
+            "rsi_5ago": round(rsi_5ago, 2),
+            "rsi_rising": rsi_rising,
+            "rsi_label": label,
+        },
+    }
 
 
 def check_macd(df: pd.DataFrame) -> dict:
     """
     MACD CHECK (max score: 15)
-    Calculation:
-      - MACD Line    = EMA12 - EMA26  (fast minus slow exponential average)
-      - Signal Line  = EMA9 of MACD Line
-      - Histogram    = MACD Line - Signal Line  (positive = bullish momentum)
-      - Fresh crossover = histogram just flipped from ≤0 to >0 (previous bar ≤0, current bar >0)
-      Scoring:
-        Fresh crossover                       → FRESH_CROSSOVER   → score 15 (best entry timing)
-        MACD > Signal + histogram growing     → BULLISH_MOMENTUM  → score 10 (strong continuation)
-        MACD > Signal + histogram shrinking   → BULLISH_WEAKENING → score  5 (momentum fading)
-        MACD < Signal                         → BEARISH           → score  0 (avoid)
+    Rewards the histogram CONVERGING toward zero (building crossover) more than
+    an already-completed crossover. By the time histogram flips positive,
+    the first chunk of the move is done.
     """
     print(f"[check_macd] df rows: {len(df)}")
     close = df["Close"]
@@ -305,22 +309,37 @@ def check_macd(df: pd.DataFrame) -> dict:
     signal_val = float(signal_line.iloc[-1])
     hist_val = float(histogram.iloc[-1])
     prev_hist = float(histogram.iloc[-2])
+    prev2_hist = float(histogram.iloc[-3])
 
     fresh_crossover = bool(hist_val > 0 and prev_hist <= 0)
+    building = bool(
+        hist_val < 0 and prev_hist < 0
+        and hist_val > prev_hist and prev_hist > prev2_hist
+    )
     bullish = bool(macd_val > signal_val)
     histogram_growing = bool(hist_val > prev_hist)
 
-    if fresh_crossover:
-        score, label = 15, "FRESH_CROSSOVER"
+    if building:
+        score, label = 15, "BUILDING_CROSSOVER"    # best: about to cross
+    elif fresh_crossover:
+        score, label = 13, "FRESH_CROSSOVER"       # just crossed, still early
     elif bullish and histogram_growing:
-        score, label = 10, "BULLISH_MOMENTUM"
+        score, label = 5, "BULLISH_MOMENTUM"        # trend running, late
     elif bullish:
-        score, label = 5, "BULLISH_WEAKENING"
+        score, label = 2, "BULLISH_WEAKENING"       # fading
     else:
         score, label = 0, "BEARISH"
 
     print(f"[check_macd] macd={macd_val:.4f}, signal={signal_val:.4f}, hist={hist_val:.4f}, label={label}")
-    return {"score": score, "details": {"macd": round(macd_val, 4), "signal": round(signal_val, 4), "histogram": round(hist_val, 4), "macd_label": label}}
+    return {
+        "score": score,
+        "details": {
+            "macd": round(macd_val, 4),
+            "signal": round(signal_val, 4),
+            "histogram": round(hist_val, 4),
+            "macd_label": label,
+        },
+    }
 
 
 def volume_confirmation(df: pd.DataFrame) -> dict:

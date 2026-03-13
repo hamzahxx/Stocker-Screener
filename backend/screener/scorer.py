@@ -5,7 +5,7 @@ from screener.technical import (
     check_support_resistance,
     check_near_support,
     check_bullish_intent,
-    check_sma_signal,
+    check_sma_cross,
     check_fibonacci,
     check_rsi,
     check_macd,
@@ -16,17 +16,22 @@ from screener.technical import (
 
 # Weights must sum to 100
 SWING_CHECKS = [
-    {"fn": check_rsi,                "weight": 20, "key": "rsi"},
-    {"fn": check_macd,               "weight": 20, "key": "macd"},
-    {"fn": check_uptrend,            "weight": 15, "key": "uptrend"},
-    {"fn": check_adx,                "weight": 15, "key": "adx"},
-    {"fn": check_52w_high,           "weight": 10, "key": "52w_high"},
-    {"fn": volume_confirmation,      "weight": 10, "key": "volume"},
-    {"fn": check_sma_signal,         "weight": 10, "key": "sma"},
-    {"fn": check_fibonacci,          "weight":  5, "key": "fibonacci"},
-    {"fn": check_support_resistance, "weight":  3, "key": "support_resistance"},
-    {"fn": check_near_support,       "weight":  2, "key": "near_support"},
-    {"fn": check_bullish_intent,     "weight":  0, "key": "bullish_intent"},  # reserved for future use
+    # ── Setup detection (highest weight) ─────────────────────────────
+    {"fn": check_rsi,                  "weight": 20, "key": "rsi"},
+    {"fn": check_macd,                 "weight": 20, "key": "macd"},
+    {"fn": check_adx,                  "weight": 15, "key": "adx"},
+
+    # ── Entry zone confirmation ──────────────────────────────────────
+    {"fn": check_support_resistance,   "weight": 10, "key": "support_resistance"},
+    {"fn": check_fibonacci,            "weight": 10, "key": "fibonacci"},
+    {"fn": volume_confirmation,        "weight":  8, "key": "volume"},
+    {"fn": check_near_support,         "weight":  5, "key": "near_support"},
+
+    # ── Info only (weight 0 — still run for details) ─────────────────
+    {"fn": check_52w_high,             "weight":  0, "key": "52w_high"},
+    {"fn": check_sma_cross,            "weight":  0, "key": "sma"},
+    {"fn": check_uptrend,              "weight":  0, "key": "uptrend"},
+    {"fn": check_bullish_intent,       "weight":  0, "key": "bullish_intent"},
 ]
 
 def score_stock(ticker: str, force_refresh: bool = False) -> dict:
@@ -94,18 +99,17 @@ def score_stock(ticker: str, force_refresh: bool = False) -> dict:
 
 
 def _get_max_score(fn) -> int:
-    """Max possible raw score each function can return."""
     return {
         check_rsi:                15,
         check_macd:               15,
-        check_uptrend:            15,
         check_adx:                15,
-        volume_confirmation:      15,
-        check_52w_high:           15,
-        check_sma_signal:         10,
-        check_fibonacci:          15,
         check_support_resistance: 10,
+        check_fibonacci:          15,
+        volume_confirmation:      15,
         check_near_support:       10,
+        check_52w_high:           15,
+        check_sma_cross:          10,
+        check_uptrend:            15,
         check_bullish_intent:     10,
     }.get(fn, 10)
 
