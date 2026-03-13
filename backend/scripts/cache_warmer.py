@@ -7,6 +7,7 @@ Render:   runs automatically on startup via main.py
 from screener.cache import PRIORITY_INDEXES
 from screener.data_fetcher import nse_stock_list_fetcher
 from screener.scorer import score_stock
+import concurrent.futures
 
 def prewarm():
     print("=" * 50)
@@ -25,15 +26,21 @@ def prewarm():
         except Exception as e:
             print(f"[prewarm] ERROR fetching index {index}: {e}")
             continue
-
-        for i, ticker in enumerate(stocks, 1):
-            print(f"[prewarm] [{i}/{len(stocks)}] {ticker}")
-            try:
-                score_stock(ticker, force_refresh=True)  # ← always overwrite
-                total_stocks += 1
-            except Exception as e:
-                print(f"[prewarm] ERROR for {ticker}: {e}")
-                failed_stocks.append(ticker)
+    
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(score_stock, ticker, force_refresh=True): ticker
+                for ticker in stocks
+            }
+            for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
+                ticker = futures[future]
+                print(f"[prewarm] [{i}/{len(stocks)}] {ticker}")
+                try:
+                    future.result()
+                    total_stocks += 1
+                except Exception as e:
+                    print(f"[prewarm] ERROR for {ticker}: {e}")
+                    failed_stocks.append(ticker)
 
     print("\n" + "=" * 50)
     print(f"[prewarm] Done.")

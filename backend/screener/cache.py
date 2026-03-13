@@ -3,6 +3,9 @@ import pickle
 import os
 from datetime import datetime, timedelta
 import pytz
+from dotenv import load_dotenv
+
+load_dotenv()
 
 IST = pytz.timezone("Asia/Kolkata")
 
