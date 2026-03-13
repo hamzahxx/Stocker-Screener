@@ -109,15 +109,19 @@ function VolumeBadge({ label }: { label: string | undefined }) {
 function RsiLabel({ label }: { label: string | undefined }) {
     if (!label) return <span className="text-gray-600">—</span>;
     const color =
-        label === "HEALTHY"
+        label === "EARLY_RECOVERY"
             ? "text-green-400"
-            : label === "OVERBOUGHT"
-              ? "text-red-400"
-              : label === "OVERSOLD"
+            : label === "OVERSOLD_BASE"
+              ? "text-lime-400"
+              : label === "DEEPLY_OVERSOLD"
                 ? "text-amber-400"
-                : label === "RECOVERING"
-                  ? "text-lime-400"
-                  : "text-amber-400"; // EXTENDED
+                : label === "NEUTRAL"
+                  ? "text-gray-400"
+                  : label === "EXTENDED"
+                    ? "text-amber-400"
+                    : label === "OVERBOUGHT"
+                      ? "text-red-400"
+                      : "text-gray-400";
     return (
         <span className={`text-[10px] font-semibold ${color}`}>{label}</span>
     );
