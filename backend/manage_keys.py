@@ -1,5 +1,5 @@
 import sys
-from api_key_manager import generate_api_key, revoke_api_key, list_api_keys
+from api_key_manager import generate_api_key, revoke_api_key, activate_api_key, list_api_keys
 
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else "help"
@@ -12,6 +12,11 @@ if __name__ == "__main__":
     elif command == "revoke":
         prefix = sys.argv[2]
         revoke_api_key(prefix)
+
+    elif command == "reactivate":
+        prefix = sys.argv[2]
+        expires = int(sys.argv[3]) if len(sys.argv) > 3 else None
+        activate_api_key(prefix, expires_days=expires)
 
     elif command == "list":
         keys = list_api_keys()

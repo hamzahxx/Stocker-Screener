@@ -68,6 +68,20 @@ def revoke_api_key(key_prefix: str):
         .execute()
     print(f"[!] Key with prefix '{key_prefix}' has been revoked.")
 
+def activate_api_key(key_prefix: str, expires_days: Optional[int] = None):
+    """Reactivate a key and optionally update its expiry."""
+    update_data = {"is_active": True}
+    if expires_days:
+        new_expiry = (datetime.utcnow() + timedelta(days=expires_days)).isoformat()
+        update_data["expires_at"] = new_expiry
+
+    supabase.table("api_keys")\
+        .update(update_data)\
+        .eq("key_prefix", key_prefix)\
+        .execute()
+    print(f"[:D] Key with the prefix '{key_prefix}' has been reactivated.")
+    if expires_days:
+        print(f"    Expiry updated to {new_expiry}")
 
 def list_api_keys():
     """List all API keys without exposing the actual key."""
