@@ -78,13 +78,17 @@ function getValue(stock: StockResult, key: SortKey): number {
             const lbl = stock.checks?.volume?.details?.volume_label as
                 | string
                 | undefined;
-            return lbl === "HIGH_VOLUME_BREAKOUT"
-                ? 3
-                : lbl === "NORMAL_VOLUME_UP"
-                  ? 2
-                  : lbl === "LOW_VOLUME_UP"
-                    ? 1
-                    : 0;
+            return lbl === "ACCUMULATION_BREAKOUT"
+                ? 5
+                : lbl === "ACCUMULATION"
+                  ? 4
+                  : lbl === "HIGH_VOLUME_UP"
+                    ? 3
+                    : lbl === "NORMAL_UP"
+                      ? 2
+                      : lbl === "QUIET"
+                        ? 1
+                        : 0; // DISTRIBUTION
         }
         case "near_support":
             return (stock.checks?.near_support?.details

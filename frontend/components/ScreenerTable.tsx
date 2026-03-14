@@ -80,22 +80,30 @@ function SmaBadge({ signal }: { signal: string | undefined }) {
 function VolumeBadge({ label }: { label: string | undefined }) {
     if (!label) return <span className="text-gray-600">—</span>;
     const styles =
-        label === "HIGH_VOLUME_BREAKOUT"
+        label === "ACCUMULATION_BREAKOUT"
             ? "bg-green-400/10 text-green-400 border-green-400/25"
-            : label === "NORMAL_VOLUME_UP"
-              ? "bg-lime-400/10 text-lime-400 border-lime-400/25"
-              : label === "LOW_VOLUME_UP"
-                ? "bg-amber-400/10 text-amber-400 border-amber-400/25"
-                : "bg-red-400/10 text-red-400 border-red-400/25";
+            : label === "ACCUMULATION"
+              ? "bg-teal-400/10 text-teal-400 border-teal-400/25"
+              : label === "HIGH_VOLUME_UP"
+                ? "bg-lime-400/10 text-lime-400 border-lime-400/25"
+                : label === "NORMAL_UP"
+                  ? "bg-amber-400/10 text-amber-400 border-amber-400/25"
+                  : label === "QUIET"
+                    ? "bg-gray-400/10 text-gray-400 border-gray-400/25"
+                    : "bg-red-400/10 text-red-400 border-red-400/25"; // DISTRIBUTION
     // Shorten for table density
     const short =
-        label === "HIGH_VOLUME_BREAKOUT"
-            ? "HIGH"
-            : label === "NORMAL_VOLUME_UP"
-              ? "NORMAL"
-              : label === "LOW_VOLUME_UP"
-                ? "LOW"
-                : "SELL";
+        label === "ACCUMULATION_BREAKOUT"
+            ? "ACCUM↑"
+            : label === "ACCUMULATION"
+              ? "ACCUM"
+              : label === "HIGH_VOLUME_UP"
+                ? "HIGH↑"
+                : label === "NORMAL_UP"
+                  ? "NORMAL↑"
+                  : label === "QUIET"
+                    ? "QUIET"
+                    : "DIST"; // DISTRIBUTION
     return (
         <span
             className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${styles}`}

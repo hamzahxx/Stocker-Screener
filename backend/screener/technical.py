@@ -299,10 +299,10 @@ def check_macd(df: pd.DataFrame) -> dict:
     """
     print(f"[check_macd] df rows: {len(df)}")
     close = df["Close"]
-    ema12 = close.ewm(span=12).mean()
-    ema26 = close.ewm(span=26).mean()
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
     macd_line = ema12 - ema26
-    signal_line = macd_line.ewm(span=9).mean()
+    signal_line = macd_line.ewm(span=9, adjust=False).mean()
     histogram = macd_line - signal_line
 
     macd_val = float(macd_line.iloc[-1])
@@ -344,60 +344,59 @@ def check_macd(df: pd.DataFrame) -> dict:
 
 def volume_confirmation(df: pd.DataFrame) -> dict:
     """
-    VOLUME CONFIRMATION CHECK (max score: 15)
-    Calculation:
-      - avg_volume   = mean of last 20 bars' volume (baseline)
-      - volume_ratio = last bar volume / avg_volume
-        → ratio > 1.0 means above-average volume
-      - price_up = last Close > previous Close
-      Scoring:
-        Price up + volume ≥ 1.5x avg  → HIGH_VOLUME_BREAKOUT → score 15 (strong conviction)
-        Price up + volume ≥ 1.0x avg  → NORMAL_VOLUME_UP    → score 10 (healthy move)
-        Price up + volume < 1.0x avg  → LOW_VOLUME_UP        → score  5 (weak, may fade)
-        Price down (any volume)        → SELLING_PRESSURE     → score  0 (avoid)
-    Logic: Volume validates price moves — a breakout without volume is suspect.
+    VOLUME CHECK (max score: 15)
+    Rewards accumulation patterns: volume drying up (institutions quietly buying)
+    followed by a volume spike on a green candle = breakout from accumulation.
+    Penalises high volume on red candles (distribution).
     """
     print(f"[check_volume] df rows: {len(df)}")
     volume = df["Volume"]
-    avg_volume = float(volume.tail(20).mean())
-    last_volume = float(volume.iloc[-1])
-    last_close = float(df["Close"].iloc[-1])
-    prev_close = float(df["Close"].iloc[-2])
+    close = df["Close"]
 
-    volume_ratio = last_volume / avg_volume if avg_volume > 0 else 1.0
+    avg_vol_recent = float(volume.tail(10).mean())
+    avg_vol_prior = float(volume.iloc[-30:-10].mean()) if len(volume) >= 30 else avg_vol_recent
+    last_volume = float(volume.iloc[-1])
+
+    vol_trend = avg_vol_recent / avg_vol_prior if avg_vol_prior > 0 else 1.0
+    vol_drying = vol_trend < 0.8  # recent volume < 80% of prior = drying up
+
+    last_close = float(close.iloc[-1])
+    prev_close = float(close.iloc[-2])
     price_up = last_close > prev_close
 
-    if price_up and volume_ratio >= 1.5:
-        score, label = 15, "HIGH_VOLUME_BREAKOUT"
-    elif price_up and volume_ratio >= 1.0:
-        score, label = 10, "NORMAL_VOLUME_UP"
-    elif price_up and volume_ratio < 1.0:
-        score, label = 5, "LOW_VOLUME_UP"
-    else:
-        score, label = 0, "SELLING_PRESSURE"
+    vol_spike = last_volume > avg_vol_recent * 1.5 if avg_vol_recent > 0 else False
 
-    print(f"[check_volume] last_vol={last_volume:.0f}, avg_vol={avg_volume:.0f}, ratio={volume_ratio:.2f}, label={label}")
-    return {"score": score, "details": {"volume_ratio": round(volume_ratio, 2), "volume_label": label}}
+    if vol_drying and vol_spike and price_up:
+        score, label = 15, "ACCUMULATION_BREAKOUT"   # best: quiet period then volume surge
+    elif vol_drying and not vol_spike:
+        score, label = 10, "ACCUMULATION"             # building base, institutions loading
+    elif price_up and vol_spike:
+        score, label = 8, "HIGH_VOLUME_UP"            # strong but could be late
+    elif price_up:
+        score, label = 5, "NORMAL_UP"
+    elif not price_up and vol_spike:
+        score, label = 0, "DISTRIBUTION"              # selling, avoid
+    else:
+        score, label = 3, "QUIET"
+
+    print(f"[check_volume] vol_trend={vol_trend:.2f}, spike={vol_spike}, drying={vol_drying}, label={label}")
+    return {
+        "score": score,
+        "details": {
+            "volume_ratio": round(vol_trend, 2),
+            "vol_spike": vol_spike,
+            "vol_drying": vol_drying,
+            "volume_label": label,
+        },
+    }
 
 
 def check_adx(df: pd.DataFrame) -> dict:
     """
-    ADX (Average Directional Index) CHECK (max score: 15)
-    Calculation:
-      - True Range (TR) = max of:
-            (High - Low),  |High - prev Close|,  |Low - prev Close|
-      - +DM = upward move (High diff) when it exceeds downward move and is positive
-      - -DM = downward move (Low diff) when it exceeds upward move and is positive
-      - ATR     = EMA14 of True Range
-      - +DI     = 100 × EMA14(+DM) / ATR  (bullish directional strength)
-      - -DI     = 100 × EMA14(-DM) / ATR  (bearish directional strength)
-      - DX      = 100 × |+DI - -DI| / (+DI + -DI)
-      - ADX     = EMA14 of DX  (trend strength — direction-neutral)
-      Scoring:
-        ADX ≥ 25 + +DI > -DI  → STRONG_UPTREND   → score 15 (strongest setup)
-        ADX ≥ 25 + +DI < -DI  → STRONG_DOWNTREND → score  0 (avoid)
-        20 ≤ ADX < 25 + +DI > -DI → DEVELOPING_TREND → score 8 (emerging trend)
-        ADX < 20               → RANGING          → score  3 (swing setups unreliable)
+    ADX CHECK (max score: 15)
+    Inverted from traditional use: rewards LOW ADX (ranging) with +DI crossing
+    above -DI — that's the moment a new trend STARTS, not a confirmed trend.
+    High ADX (≥25) means the trend is mature and most profits are taken.
     """
     print(f"[check_adx] df rows: {len(df)}")
     high = df["High"]
@@ -419,23 +418,52 @@ def check_adx(df: pd.DataFrame) -> dict:
     plus_di = 100 * (plus_dm.ewm(span=period).mean() / atr)
     minus_di = 100 * (minus_dm.ewm(span=period).mean() / atr)
     dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di)
-    adx = float(dx.ewm(span=period).mean().iloc[-1])
+    adx_series = dx.ewm(span=period).mean()
+
+    adx = float(adx_series.iloc[-1])
+    prev_adx = float(adx_series.iloc[-2])
     plus_di_val = float(plus_di.iloc[-1])
     minus_di_val = float(minus_di.iloc[-1])
 
+    adx_rising = adx > prev_adx
     trending_up = bool(plus_di_val > minus_di_val)
 
-    if adx >= 25 and trending_up:
-        score, label = 15, "STRONG_UPTREND"
-    elif adx >= 25 and not trending_up:
-        score, label = 0, "STRONG_DOWNTREND"
-    elif 20 <= adx < 25 and trending_up:
-        score, label = 8, "DEVELOPING_TREND"
-    else:
-        score, label = 3, "RANGING"
+    # Detect +DI crossing above -DI within last 5 bars
+    di_crossover = False
+    for i in range(-5, 0):
+        prev_plus = float(plus_di.iloc[i - 1])
+        prev_minus = float(minus_di.iloc[i - 1])
+        curr_plus = float(plus_di.iloc[i])
+        curr_minus = float(minus_di.iloc[i])
+        if prev_plus <= prev_minus and curr_plus > curr_minus:
+            di_crossover = True
+            break
 
-    print(f"[check_adx] adx={adx:.2f}, +DI={plus_di_val:.2f}, -DI={minus_di_val:.2f}, label={label}")
-    return {"score": score, "details": {"adx": round(adx, 2), "plus_di": round(plus_di_val, 2), "minus_di": round(minus_di_val, 2), "adx_label": label}}
+    if adx < 20 and di_crossover:
+        score, label = 15, "TREND_INITIATION"       # best: new trend starting from flat
+    elif 18 <= adx < 25 and trending_up and adx_rising:
+        score, label = 12, "TREND_BUILDING"          # trend emerging
+    elif adx < 20 and trending_up:
+        score, label = 8, "EARLY_SETUP"              # directional but no momentum yet
+    elif adx >= 25 and trending_up:
+        score, label = 5, "CONFIRMED_TREND"          # late, trend mature
+    elif adx >= 25 and not trending_up:
+        score, label = 0, "STRONG_DOWNTREND"         # avoid
+    else:
+        score, label = 2, "RANGING_BEARISH"
+
+    print(f"[check_adx] adx={adx:.2f}, +DI={plus_di_val:.2f}, -DI={minus_di_val:.2f}, "
+          f"di_cross={di_crossover}, label={label}")
+    return {
+        "score": score,
+        "details": {
+            "adx": round(adx, 2),
+            "plus_di": round(plus_di_val, 2),
+            "minus_di": round(minus_di_val, 2),
+            "di_crossover": di_crossover,
+            "adx_label": label,
+        },
+    }
 
 
 def check_52w_high(df: pd.DataFrame) -> dict:
