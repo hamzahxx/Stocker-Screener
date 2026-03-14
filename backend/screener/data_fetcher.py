@@ -22,7 +22,7 @@ def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d"):
         raise
 
     try:
-        history = stock.history(period=period, interval=interval)
+        history = stock.history(period=period, interval=interval, auto_adjust=False)
         print(f"[get_stock_data] stock.history fetched OK — rows: {len(history)}, columns: {list(history.columns)}")
         if history.empty:
             print(f"[get_stock_data] WARNING: history DataFrame is EMPTY for {ns_ticker}")
