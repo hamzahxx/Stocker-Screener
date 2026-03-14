@@ -11,8 +11,13 @@ IST = pytz.timezone("Asia/Kolkata")
 
 PRIORITY_INDEXES = [
     "NIFTY 200",
+    "NIFTY NEXT 50",
     "NIFTY MIDCAP 150",
-    "NIFTY SMALLCAP 250"
+    "NIFTY SMALLCAP 250",
+    "NIFTY BANK",
+    "NIFTY AUTO",
+    "NIFTY PHARMA",
+    "NIFTY FMCG",
 ]
 
 _redis_client = None
