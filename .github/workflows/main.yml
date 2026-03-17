@@ -20,6 +20,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run prewarm
+        working-directory: backend
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
         run: python -m scripts.cache_warmer
