@@ -17,7 +17,7 @@ function SkeletonBlock({
 }) {
     return (
         <div
-            className={cn("animate-pulse rounded bg-[#2a2a2e]", className)}
+            className={cn("animate-pulse rounded bg-border", className)}
             style={style}
         />
     );
@@ -26,40 +26,106 @@ function SkeletonBlock({
 /** Skeleton for the index screener table — renders placeholder rows */
 function TableSkeleton({ count }: { count: number }) {
     return (
-        <div className="w-full overflow-hidden rounded-lg border border-[#2a2a2e]">
-            {/* Header */}
-            <div className="flex gap-3 border-b border-[#2a2a2e] bg-[#141416] px-4 py-3">
-                {[40, 80, 70, 50, 55, 55, 65, 55, 50, 60, 60, 50].map(
-                    (w, i) => (
-                        <SkeletonBlock
-                            key={i}
-                            className={`h-3`}
-                            style={{ width: w }}
-                        />
-                    ),
-                )}
-            </div>
+        <div className="w-full overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-225 border-collapse text-xs">
+                {/* Header */}
+                <thead>
+                    <tr className="border-b border-border bg-surface">
+                        <th className="px-3 py-2.5 text-left">
+                            <SkeletonBlock className="h-3 w-3" />
+                        </th>
+                        <th className="px-3 py-2.5 text-left">
+                            <SkeletonBlock className="h-3 w-12" />
+                        </th>
+                        <th className="px-3 py-2.5 text-left">
+                            <SkeletonBlock className="h-3 w-10" />
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                            <SkeletonBlock className="mx-auto h-3 w-10" />
+                        </th>
+                        <th className="px-3 py-2.5 text-right">
+                            <SkeletonBlock className="ml-auto h-3 w-14" />
+                        </th>
+                        <th className="px-3 py-2.5 text-right">
+                            <SkeletonBlock className="ml-auto h-3 w-8" />
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                            <SkeletonBlock className="mx-auto h-3 w-12" />
+                        </th>
+                        <th className="px-3 py-2.5 text-right">
+                            <SkeletonBlock className="ml-auto h-3 w-12" />
+                        </th>
+                        <th className="px-3 py-2.5 text-right">
+                            <SkeletonBlock className="ml-auto h-3 w-8" />
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                            <SkeletonBlock className="mx-auto h-3 w-8" />
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                            <SkeletonBlock className="mx-auto h-3 w-8" />
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                            <SkeletonBlock className="mx-auto h-3 w-10" />
+                        </th>
+                        <th className="px-3 py-2.5 text-center">
+                            <SkeletonBlock className="mx-auto h-3 w-11" />
+                        </th>
+                    </tr>
+                </thead>
 
-            {/* Rows */}
-            {Array.from({ length: count }).map((_, rowIdx) => (
-                <div
-                    key={rowIdx}
-                    className="flex items-center gap-3 border-b border-[#2a2a2e] px-4 py-2.5 last:border-0"
-                >
-                    <SkeletonBlock className="h-3 w-6" />
-                    <SkeletonBlock className="h-3 w-20" />
-                    <SkeletonBlock className="h-3 w-16" />
-                    <SkeletonBlock className="h-5 w-10 rounded-full" />
-                    <SkeletonBlock className="h-3 w-12" />
-                    <SkeletonBlock className="h-3 w-16" />
-                    <SkeletonBlock className="h-3 w-14" />
-                    <SkeletonBlock className="h-3 w-12" />
-                    <SkeletonBlock className="h-3 w-6" />
-                    <SkeletonBlock className="h-5 w-14 rounded-full" />
-                    <SkeletonBlock className="h-5 w-16 rounded-full" />
-                    <SkeletonBlock className="h-3 w-6" />
-                </div>
-            ))}
+                {/* Rows */}
+                <tbody>
+                    {Array.from({ length: count }).map((_, rowIdx) => (
+                        <tr
+                            key={rowIdx}
+                            className="border-b border-border last:border-0"
+                        >
+                            <td className="px-3 py-2">
+                                <SkeletonBlock className="h-3 w-4" />
+                            </td>
+                            <td className="px-3 py-2">
+                                <SkeletonBlock className="h-3 w-14" />
+                            </td>
+                            <td className="px-3 py-2">
+                                <div className="flex min-w-18 flex-col gap-0.5">
+                                    <SkeletonBlock className="h-3 w-8" />
+                                    <SkeletonBlock className="h-0.75 w-full rounded-full" />
+                                </div>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                                <SkeletonBlock className="mx-auto h-5 w-10 rounded-full" />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                                <SkeletonBlock className="ml-auto h-3 w-14" />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                                <SkeletonBlock className="ml-auto h-3 w-8" />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                                <SkeletonBlock className="mx-auto h-3 w-14" />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                                <SkeletonBlock className="ml-auto h-3 w-12" />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                                <SkeletonBlock className="ml-auto h-3 w-8" />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                                <SkeletonBlock className="mx-auto h-3 w-3" />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                                <SkeletonBlock className="mx-auto h-5 w-12 rounded-full" />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                                <SkeletonBlock className="mx-auto h-5 w-14 rounded-full" />
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                                <SkeletonBlock className="mx-auto h-3 w-3" />
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }
@@ -71,23 +137,41 @@ function CardsSkeleton({ count }: { count: number }) {
             {Array.from({ length: count }).map((_, i) => (
                 <div
                     key={i}
-                    className="rounded-lg border border-[#2a2a2e] bg-[#141416] p-4 space-y-3"
+                    className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
                 >
-                    {/* Label row */}
-                    <div className="flex items-center justify-between">
-                        <SkeletonBlock className="h-3 w-32" />
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                            <SkeletonBlock className="h-3 w-24" />
+                            <SkeletonBlock className="h-3 w-3 rounded-full" />
+                        </div>
                         <SkeletonBlock className="h-5 w-16 rounded-full" />
                     </div>
+
                     {/* Score row */}
-                    <div className="flex items-baseline gap-2">
-                        <SkeletonBlock className="h-6 w-10" />
-                        <SkeletonBlock className="h-3 w-8" />
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-baseline gap-1">
+                            <SkeletonBlock className="h-6 w-10" />
+                            <SkeletonBlock className="h-3 w-8" />
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5">
+                            <SkeletonBlock className="h-3 w-12" />
+                            <SkeletonBlock className="h-2.5 w-14" />
+                        </div>
                     </div>
+
                     {/* Progress bar */}
-                    <SkeletonBlock className="h-1.5 w-full rounded-full" />
+                    <SkeletonBlock className="h-0.75 w-full rounded-full" />
+
                     {/* Detail rows */}
-                    <SkeletonBlock className="h-3 w-24" />
-                    <SkeletonBlock className="h-3 w-20" />
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        <SkeletonBlock className="h-2.5 w-16" />
+                        <SkeletonBlock className="ml-auto h-2.5 w-14" />
+                        <SkeletonBlock className="h-2.5 w-20" />
+                        <SkeletonBlock className="ml-auto h-2.5 w-12" />
+                        <SkeletonBlock className="h-2.5 w-14" />
+                        <SkeletonBlock className="ml-auto h-2.5 w-16" />
+                    </div>
                 </div>
             ))}
         </div>

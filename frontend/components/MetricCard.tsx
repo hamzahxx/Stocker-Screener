@@ -41,8 +41,6 @@ function getDetailRows(
                 { label: "Histogram", value: n("histogram", 4) },
                 { label: "Label", value: s("macd_label") },
             ];
-        case "uptrend":
-            return [{ label: "Above SMA200", value: b("uptrend") }];
         case "adx":
             return [
                 { label: "ADX", value: n("adx", 1) },
@@ -50,21 +48,11 @@ function getDetailRows(
                 { label: "-DI", value: n("minus_di", 1) },
                 { label: "Label", value: s("adx_label") },
             ];
-        case "52w_high":
-            return [
-                { label: "52W High", value: n("52w_high", 2) },
-                { label: "Current", value: n("current_price", 2) },
-                { label: "% from High", value: `${n("pct_from_52w_high", 1)}%` },
-                { label: "Breakout", value: b("fresh_breakout") },
-                { label: "Label", value: s("label") },
-            ];
         case "volume":
             return [
                 { label: "Volume Ratio", value: n("volume_ratio", 2) + "×" },
                 { label: "Signal", value: s("volume_label") },
             ];
-        case "sma":
-            return [{ label: "Signal", value: s("sma_signal") }];
         case "fibonacci":
             return [
                 { label: "Retrace %", value: `${n("fib_retrace_pct", 1)}%` },
@@ -79,6 +67,21 @@ function getDetailRows(
             ];
         case "near_support":
             return [{ label: "Near Support", value: b("near_support") }];
+        case "uptrend":
+            return [{ label: "Above SMA200", value: b("uptrend") }];
+        case "52w_high":
+            return [
+                { label: "52W High", value: n("52w_high", 2) },
+                { label: "Current", value: n("current_price", 2) },
+                {
+                    label: "% from High",
+                    value: `${n("pct_from_52w_high", 1)}%`,
+                },
+                { label: "Breakout", value: b("fresh_breakout") },
+                { label: "Label", value: s("label") },
+            ];
+        case "sma":
+            return [{ label: "Signal", value: s("sma_signal") }];
         case "bullish_intent":
             return [
                 { label: "Big Green Candle", value: b("big_green") },
@@ -98,10 +101,10 @@ function StatusBadge({ pctOfMax }: { pctOfMax: number | undefined }) {
         label === "Bullish"
             ? "bg-green-400/10 border-green-400/25"
             : label === "Bearish"
-            ? "bg-red-400/10 border-red-400/25"
-            : label === "Neutral"
-            ? "bg-amber-400/10 border-amber-400/25"
-            : "bg-gray-700/30 border-gray-600/25";
+              ? "bg-red-400/10 border-red-400/25"
+              : label === "Neutral"
+                ? "bg-amber-400/10 border-amber-400/25"
+                : "bg-gray-700/30 border-gray-600/25";
 
     return (
         <span
@@ -120,11 +123,7 @@ export function MetricCard({ metricKey, meta, detail }: MetricCardProps) {
     // % of max bar fill
     const pct = detail.pct_of_max ?? 0;
     const barColor =
-        pct >= 70
-            ? "bg-green-400"
-            : pct >= 40
-            ? "bg-amber-400"
-            : "bg-red-400";
+        pct >= 70 ? "bg-green-400" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
 
     return (
         <div
@@ -196,7 +195,9 @@ export function MetricCard({ metricKey, meta, detail }: MetricCardProps) {
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                     {rows.map(({ label, value }) => (
                         <React.Fragment key={label}>
-                            <span className="text-[10px] text-gray-500 truncate">{label}</span>
+                            <span className="text-[10px] text-gray-500 truncate">
+                                {label}
+                            </span>
                             <span className="text-[10px] font-mono text-gray-300 truncate text-right">
                                 {value}
                             </span>
