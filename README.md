@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://stocker.hamzahcodes.in/og-image.jpg" alt="Stocker banner" width="450" />
+</p>
+
 # Stocker | The NSE Screener
 
 Stock Screener is a two-part web app for NSE equities: a FastAPI backend computes multi-factor swing-trade scores and a Next.js frontend lets you screen indexes, filter results, and inspect per-stock indicator breakdowns.
@@ -5,7 +9,6 @@ Stock Screener is a two-part web app for NSE equities: a FastAPI backend compute
 ## Live Demo 🌐
 
 [https://stocker.hamzahcodes.in/](https://stocker.hamzahcodes.in/)
-
 
 ## What This Project Does 🚀
 
