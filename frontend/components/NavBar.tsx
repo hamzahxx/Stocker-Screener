@@ -51,7 +51,7 @@ export function NavBar({
                 {/* Left — app name */}
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                     <span className="whitespace-nowrap text-base font-bold tracking-tight text-white">
-                        NSE Screener
+                        Stocker, The NSE Screener
                     </span>
                 </div>
 
