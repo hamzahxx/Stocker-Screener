@@ -1,5 +1,6 @@
 import requests
 import yfinance as yf
+import pandas as pd
 from screener.cache import cache_get, cache_set
 
 def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d"):
@@ -26,6 +27,23 @@ def get_stock_data(ticker: str, period: str = "2y", interval: str = "1d"):
         print(f"[get_stock_data] stock.history fetched OK — rows: {len(history)}, columns: {list(history.columns)}")
         if history.empty:
             print(f"[get_stock_data] WARNING: history DataFrame is EMPTY for {ns_ticker}")
+
+        if interval == "1d" and not history.empty and "Close" in history.columns:
+            last_close = history["Close"].iloc[-1]
+            if pd.isna(last_close):
+                live_price = (
+                    info.get("regularMarketPrice")
+                    or info.get("currentPrice")
+                    or stock.fast_info.get("lastPrice")
+                )
+                if live_price is not None:
+                    history.at[history.index[-1], "Close"] = float(live_price)
+                    print(
+                        "[get_stock_data] Patched latest NaN Close with live price "
+                        f"{float(live_price):.2f} for {ns_ticker}"
+                    )
+                else:
+                    print(f"[get_stock_data] WARNING: Latest Close is NaN and no live price was available for {ns_ticker}")
     except Exception as e:
         print(f"[get_stock_data] ERROR fetching stock.history for {ns_ticker}: {e}")
         raise

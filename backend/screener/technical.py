@@ -253,16 +253,47 @@ def check_rsi(df: pd.DataFrame) -> dict:
     RSI momentum (rising vs 5 bars ago) separates real recovery from dead-cat bounces.
     """
     print(f"[check_rsi] df rows: {len(df)}")
-    close = df["Close"]
+    close = df["Close"].astype(float)
+    period = 14
+
+    if len(close) <= period:
+        print("[check_rsi] Not enough data for RSI14")
+        return {
+            "score": 0,
+            "details": {
+                "rsi": None,
+                "rsi_5ago": None,
+                "rsi_rising": False,
+                "rsi_label": "INSUFFICIENT_DATA",
+            },
+        }
+
     delta = close.diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = -delta.clip(upper=0).rolling(14).mean()
-    rs = gain / loss
+    gain = delta.clip(lower=0).fillna(0.0)
+    loss = (-delta.clip(upper=0)).fillna(0.0)
+
+    # Wilder RSI seed: first average is SMA(period), then recursive smoothing.
+    avg_gain = pd.Series(np.nan, index=close.index, dtype=float)
+    avg_loss = pd.Series(np.nan, index=close.index, dtype=float)
+    avg_gain.iloc[period] = float(gain.iloc[1:period + 1].mean())
+    avg_loss.iloc[period] = float(loss.iloc[1:period + 1].mean())
+
+    for i in range(period + 1, len(close)):
+        avg_gain.iloc[i] = ((avg_gain.iloc[i - 1] * (period - 1)) + gain.iloc[i]) / period
+        avg_loss.iloc[i] = ((avg_loss.iloc[i - 1] * (period - 1)) + loss.iloc[i]) / period
+
+    rs = avg_gain / avg_loss
     rsi_series = 100 - (100 / (1 + rs))
-    rsi = float(rsi_series.iloc[-1])
+
+    # Match common charting behavior for no-loss / no-move edge cases.
+    rsi_series = rsi_series.where(avg_loss != 0, 100.0)
+    rsi_series = rsi_series.where(~((avg_gain == 0) & (avg_loss == 0)), 50.0)
+
+    valid_rsi = rsi_series.dropna()
+    rsi = float(valid_rsi.iloc[-1]) if not valid_rsi.empty else 50.0
 
     # RSI momentum: is RSI rising vs 5 bars ago?
-    rsi_5ago = float(rsi_series.iloc[-6]) if len(rsi_series) >= 6 else rsi
+    rsi_5ago = float(valid_rsi.iloc[-6]) if len(valid_rsi) >= 6 else rsi
     rsi_rising = rsi > rsi_5ago + 2  # at least 2 points = meaningful shift
 
     if 25 <= rsi <= 45 and rsi_rising:
